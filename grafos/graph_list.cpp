@@ -36,9 +36,14 @@ public:
     void DFS(int v); 
     void BFS(int s);
     //detectar ciclos em grafos(adaptação de BFS)
-    bool isCyclicUtil(int v, bool visited[], int parent) ;
+    bool isCyclicUtil(int v, bool visited[], bool recStack[]) ;
     bool isCyclic();
-
+    void topologicalSortUtil(int v, bool visited[],  
+                                stack<int> &Stack) ;
+    void topologicalSort(); 
+    void countPathsUtil(int u, int d, bool visited[], 
+                                        int &pathCount) ;
+    int countPaths(int s, int d) ;
 }; 
   
 Graph::Graph(int V) 
@@ -58,7 +63,7 @@ void Graph::DFSUtil(int v, bool visited[])
     // print it 
     visited[v] = true; 
     cout << v << " "; 
-  
+    
     // Recur for all the vertices adjacent 
     // to this vertex 
     list<int>::iterator i; 
@@ -91,33 +96,74 @@ void Graph::DFS(int v)
     DFSUtil(v, visited); 
 } 
 
-  
-// A recursive function that uses visited[] and parent to detect 
-// cycle in subgraph reachable from vertex v. 
-bool Graph::isCyclicUtil(int v, bool visited[], int parent) 
+
+// A recursive function used by topologicalSort 
+void Graph::topologicalSortUtil(int v, bool visited[],  
+                                stack<int> &Stack) 
 { 
-    // Mark the current node as visited 
+    // Mark the current node as visited. 
     visited[v] = true; 
   
     // Recur for all the vertices adjacent to this vertex 
     list<int>::iterator i; 
     for (i = adj[v].begin(); i != adj[v].end(); ++i) 
-    { 
-        // If an adjacent is not visited, then recur for that adjacent 
         if (!visited[*i]) 
+            topologicalSortUtil(*i, visited, Stack); 
+  
+    // Push current vertex to stack which stores result 
+    Stack.push(v); 
+} 
+  
+// The function to do Topological Sort. It uses recursive  
+// topologicalSortUtil() 
+void Graph::topologicalSort() 
+{ 
+    stack<int> Stack; 
+  
+    // Mark all the vertices as not visited 
+    bool *visited = new bool[V]; 
+    for (int i = 0; i < V; i++) 
+        visited[i] = false; 
+  
+    // Call the recursive helper function to store Topological 
+    // Sort starting from all vertices one by one 
+    for (int i = 0; i < V; i++) 
+      if (visited[i] == false) 
+        topologicalSortUtil(i, visited, Stack); 
+  
+    // Print contents of stack 
+    while (Stack.empty() == false) 
+    { 
+        cout << Stack.top() << " "; 
+        Stack.pop(); 
+    } 
+} 
+  
+// A recursive function that uses visited[] and parent to detect 
+// cycle in subgraph reachable from vertex v. 
+// This function is a variation of DFSUytil() in https://www.geeksforgeeks.org/archives/18212 
+bool Graph::isCyclicUtil(int v, bool visited[], bool *recStack) 
+{ 
+    if(visited[v] == false) 
+    {  
+        // Mark the current node as visited and part of recursion stack 
+        visited[v] = true; 
+        recStack[v] = true; 
+  
+        // Recur for all the vertices adjacent to this vertex 
+        list<int>::iterator i; 
+        for(i = adj[v].begin(); i != adj[v].end(); ++i) 
         { 
-           if (isCyclicUtil(*i, visited, v)) 
-              return true; 
+            if ( !visited[*i] && isCyclicUtil(*i, visited, recStack) ) 
+                return true; 
+            else if (recStack[*i]) 
+                return true; 
         } 
   
-        // If an adjacent is visited and not parent of current vertex, 
-        // then there is a cycle. 
-        else if (*i != parent) 
-           return true; 
     } 
+    recStack[v] = false;  // remove the vertex from recursion stack 
     return false; 
 } 
-
 /*
     Pode ser usado para detectar ciclos em apenas um vertice
     para isso usar apenas a isCyclicUtil(v, visited, -1)
@@ -128,14 +174,17 @@ bool Graph::isCyclic()
     // Mark all the vertices as not visited and not part of recursion 
     // stack 
     bool *visited = new bool[V]; 
-    for (int i = 0; i < V; i++) 
-        visited[i] = false; 
+    // stack 
+    bool *visited = new bool[V]; 
+    bool *recStack = new bool[V]; 
+    memset(visited, false, sizeof(visited));
+    memset(recStack, false, sizeof(recStack)); 
   
     // Call the recursive helper function to detect cycle in different 
     // DFS trees 
     for (int u = 0; u < V; u++) 
         if (!visited[u]) // Don't recur for u if it is already visited 
-          if (isCyclicUtil(u, visited, -1)) 
+          if (isCyclicUtil(u, visited, recStack)) 
              return true; 
   
     return false; 
@@ -183,7 +232,56 @@ void Graph::BFS(int s)
         } 
     } 
 } 
+
+ 
+// A recursive function to print all paths  
+// from 'u' to 'd'. visited[] keeps track of  
+// vertices in current path. path[] stores  
+// actual vertices and path_index is  
+// current index in path[] 
+void Graph::countPathsUtil(int u, int d, bool visited[], 
+                                        int &pathCount) 
+{ 
+    visited[u] = true; 
   
+    // If current vertex is same as destination,  
+    // then increment count 
+    if (u == d) 
+        pathCount++; 
+  
+    // If current vertex is not destination 
+    else
+    { 
+        // Recur for all the vertices adjacent to 
+        // current vertex 
+        list<int>::iterator i; 
+        for (i = adj[u].begin(); i != adj[u].end(); ++i) 
+            if (!visited[*i]) 
+                countPathsUtil(*i, d, visited,  
+                                      pathCount); 
+    } 
+  
+    visited[u] = false; 
+} 
+  
+ 
+// Returns count of paths from 's' to 'd' 
+int Graph::countPaths(int s, int d) 
+{ 
+      
+    // Mark all the vertices 
+    // as not visited 
+    bool *visited = new bool[V]; 
+    memset(visited, false, sizeof(visited)); 
+  
+    // Call the recursive helper 
+    // function to print all paths 
+    int pathCount = 0; 
+    countPathsUtil(s, d, visited, pathCount); 
+    return pathCount; 
+} 
+  
+
 // Driver code 
 int main() 
 { 
